@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.neighbors import KDTree
 import csv
+import numpy as np
 
 def find_next_vertex(tree, nearest_ind, selected_coordinates, loop_iteration):
     print("Selected Coordinates Loop:", selected_coordinates)
@@ -77,6 +78,44 @@ print(selected_coordinates)
 tree = KDTree(X)
 nearest_dist, nearest_ind = tree.query(X, k=len(X))
 
+# --------------------------------
+# Set up tree to search in
+# Individual X, Y, Z trees
+X_coo = [x[0] for x in X]
+#tree_X = KDTree(X_coo)
+Y_coo = [y[1] for y in X]
+#tree_Y = KDTree(Y_coo)
+Z_coo = [z[2] for z in X]
+#tree_Z = KDTree(Z_coo)
+
+# Create the X,Y X,Z Y,Z trees
+XY_coo = list(zip(X_coo, Y_coo))
+XZ_coo = list(zip(X_coo, Z_coo))
+YZ_coo = list(zip(Y_coo, Z_coo))
+#for x in range(len(X_coo)):
+#    XY_coo = np.column_stack((X_coo[x], Y_coo[x]))
+#    XZ_coo = [X_coo[x], Z_coo[x]]
+#    YZ_coo = [Y_coo[x], Z_coo[x]]
+
+XY_tree = KDTree(XY_coo)
+XZ_tree = KDTree(XZ_coo)
+YZ_tree = KDTree(YZ_coo)
+
+#nearest_dist, nearest_ind = tree.query(plain_verts, k=len(plain_verts))
+#print("IND:", "\n".join(str(x) for x in nearest_ind))
+
+# Calculate each distances
+XY_nearest_dist, XY_nearest_ind = XY_tree.query(XY_coo, k=len(XY_coo))
+XZ_nearest_dist, XZ_nearest_ind = XZ_tree.query(XZ_coo, k=len(XZ_coo))
+YZ_nearest_dist, YZ_nearest_ind = YZ_tree.query(YZ_coo, k=len(YZ_coo))
+calc_average_index = []
+for i in range(len(XY_coo)):
+    xy_ind = XY_nearest_ind.tolist().index(i)
+    xz_ind = XZ_nearest_ind.index(i)
+    yz_ind = YZ_nearest_ind.index(i)
+    calc_average_index[i] = xy_ind[i] + xz_ind[i] + yz_ind[i]
+# -----------------------------------
+
 #with open('Indices.csv', 'w') as out:
 #    csv_out = csv.writer(out)
 #    for row in nearest_ind:
@@ -84,7 +123,7 @@ nearest_dist, nearest_ind = tree.query(X, k=len(X))
 #print("IND:", "\n".join(str(x) for x in nearest_ind))
 
 for x in range(0, (len(X)-1)): # Since first determines the start instead of next closest neighbour
-    next = find_next_vertex(tree=X, nearest_ind=nearest_ind, selected_coordinates=selected_coordinates, loop_iteration=x)
+    next = find_next_vertex(tree=X, nearest_ind=calc_average_index, selected_coordinates=selected_coordinates, loop_iteration=x)
 
     # Add to list
     selected_coordinates.append(next)

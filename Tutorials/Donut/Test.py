@@ -50,6 +50,7 @@ bm = bmesh.from_edit_mesh(obj.data)
 # coordinates as tuples
 plain_verts = [vert.to_tuple() for vert in verts]
 print("Plain Verts:\n", plain_verts)
+
 # Find farthest X coordinate
 X_coo = [x[0] for x in plain_verts]
 print("List of X coordinates:", X_coo)
@@ -60,10 +61,57 @@ max_X_index = X_coo.index(max_X)
 print("Largest X Coordinate:", max_X)
 print("And its index:", max_X_index)
 
+# Old implementation
+#tree = KDTree(plain_verts)
+#nearest_dist, nearest_ind = tree.query(plain_verts, k=len(plain_verts))[0][:,-1]
+
+# Does not work in current stuff
+# Append Solution:
+# Create X,Y X,Z and Y,Z trees, so there are still spatial coordinates
+# 1D arrays are not allowed
+# --------------------------------
 # Set up tree to search in
-tree = KDTree(plain_verts)
-nearest_dist, nearest_ind = tree.query(plain_verts, k=len(plain_verts))
-print("IND:", "\n".join(str(x) for x in nearest_ind))
+# Individual X, Y, Z trees
+X_coo = [x[0] for x in plain_verts]
+#tree_X = KDTree(X_coo)
+Y_coo = [y[1] for y in plain_verts]
+#tree_Y = KDTree(Y_coo)
+Z_coo = [z[2] for z in plain_verts]
+#tree_Z = KDTree(Z_coo)
+
+# Create the X,Y X,Z Y,Z trees
+XY_coo = list(zip(X_coo, Y_coo))
+XZ_coo = list(zip(X_coo, Z_coo))
+YZ_coo = list(zip(Y_coo, Z_coo))
+#for x in range(len(X_coo)):
+#    XY_coo = np.column_stack((X_coo[x], Y_coo[x]))
+#    XZ_coo = [X_coo[x], Z_coo[x]]
+#    YZ_coo = [Y_coo[x], Z_coo[x]]
+
+XY_tree = KDTree(XY_coo)
+XZ_tree = KDTree(XZ_coo)
+YZ_tree = KDTree(YZ_coo)
+
+#nearest_dist, nearest_ind = tree.query(plain_verts, k=len(plain_verts))
+#print("IND:", "\n".join(str(x) for x in nearest_ind))
+
+# Calculate each distances
+XY_nearest_dist, XY_nearest_ind = XY_tree.query(XY_coo, k=len(XY_coo))
+XZ_nearest_dist, XZ_nearest_ind = XZ_tree.query(XZ_coo, k=len(XZ_coo))
+YZ_nearest_dist, YZ_nearest_ind = YZ_tree.query(YZ_coo, k=len(YZ_coo))
+calc_average_index = []
+for i in range(len(tree_XZ)):
+    xy_ind[i] = XY_nearest_ind.index(i)
+    xz_ind[i] = XZ_nearest_ind.index(i)
+    yz_ind[i] = YZ_nearest_ind.index(i)
+    calc_average_index[i] = xy_ind[i] + xz_ind[i] + yz_ind[i]
+# -----------------------------------
+
+
+# Most extreme +X point as begin point
+max_X = max(X_coo)
+max_X_index = X_coo.index(max_X)
+
 # Turn on vertex
 bm.verts.ensure_lookup_table()
 bm.verts[max_X_index].select_set(True)
@@ -75,7 +123,8 @@ selected_coordinates.append(max_X_index)
 print(selected_coordinates)
 
 for x in range(0, (len(plain_verts)-1)): # Since first determines the start instead of next closest neighbour
-    next = find_next_vertex(tree=plain_verts, nearest_ind=nearest_ind, selected_coordinates=selected_coordinates, loop_iteration=x, bm=bm)
+#    next = find_next_vertex(tree=plain_verts, nearest_ind=nearest_ind, selected_coordinates=selected_coordinates, loop_iteration=x, bm=bm)
+    next = find_next_vertex(tree=plain_verts, nearest_ind=calc_average_index, selected_coordinates=selected_coordinates, loop_iteration=x, bm=bm)
 
     # Add to list
     selected_coordinates.append(next)
@@ -107,3 +156,17 @@ else:
 # Increase Z height
 
 # Donut 0 is at farthest positive X coordinate
+
+# Idea to get all vertices selected in one plane at a time
+# First, find max X (arbitrary)
+# Instead of one calculation of nearest distance overall find nearest neighbour based on one specific axis
+# Find closest neighbour on X
+# Find closest on Y
+# Find closest on Z
+# These three might overlap, but likely will have slight differences between them
+# Thought:
+# To find the closest point, average the three indices of each found point.
+# So, if point 3 is at index 2 for X, 3 for Y, and 10 for Z, then its average index would be 5.
+# Lowest possible index is 1+1+1 (since 0 is the point itself), so an average of 1.
+# Perhaps division is not not necessary, so total would be 15 and 3, respectively.
+# Then pick this lowest index and that is the new vertex to turn on.
