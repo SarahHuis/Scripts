@@ -1,20 +1,67 @@
 import bpy, bmesh
 from sklearn.neighbors import KDTree
+import math
 
 # Create a function that builds a tree like KDTree, just with only the nearest vertices
-#def closest_neighbours(coordinates, neighbour_verts):
-#    for e in enumerate(neighbour_verts):
-#        print("Suc:", len(neighbour_verts[0]))
-#        #for v in range(len(neighbour_verts[0])):
-#        for v in enumerate(range(3)):
-#            print("Success:", neighbour_verts[e][v])
+def closest_neighbours(coordinates, neighbour_verts):
+    tree = []
+    for e, b in enumerate(neighbour_verts):
 
+        #print("Suc:", len(neighbour_verts[0]))
+        #print("NN:")
+        #print(e)
+        tmp = []
+        for v in range(len(neighbour_verts[e])):
+        #for v in enumerate(range(3)):
+            vertex = neighbour_verts[e][v]
+            coo = coordinates[neighbour_verts[e][v]]
+            ind_coo = coordinates[e]
+            #print("V:", v)
+            #print("Vertex:", vertex)
+            #print("Coo:", coo)
+            #print("Ind_coo:", ind_coo)
+            #print("Ind_coo[1]:", ind_coo[1])
+            #print("Coo[1]:", coo[1])
+            #dist_YZ = math.sqrt(math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2)) # (Y1 - Y2) + (Z1 - Z2)
+            dist_X = ind_coo[0] - coo[0]
+            result = []
+            result.append(vertex)
+            result.append(dist_X)
+            tuple(result)
+            #print("Result:", result)
+            tmp.append(result)
+        #print("TMP:", tmp)
+
+#        for i in range(len(tmp)):
+#            if tmp[i][1] < tmp[i-1][1]:
+#                tmp.insert((i-1), tmp.pop(i))
+#                print("Pop:", tmp)
+        c = 1
+        while c != 0:
+            c = 1
+            for i in range(len(tmp)):
+                if tmp[i][1] < tmp[i-1][1] and i != 0:
+                    tmp.insert((i-1), tmp.pop(i))
+                    print("Pop:", tmp)
+                    c += 1
+            if c == 1:
+                c = 0
+
+        tmp_tree = []
+        tmp_tree.append(e)
+        for i in range(len(tmp)):
+            tmp_tree.append(tmp[i][0])
+        #print("TMP Tree:", tmp_tree)
+        tree.append(tmp_tree)
+
+    print("Tree:", tree)
+    return tree
 
 def find_next_vertex(tree, nearest_ind, selected_coordinates, loop_iteration, bm):
     bm.verts.ensure_lookup_table()
     print("Selected Coordinates Loop:", selected_coordinates)
     c = 1
-    next = nearest_ind[selected_coordinates[loop_iteration], c]
+    next = nearest_ind[selected_coordinates[loop_iteration]][c]
     print("Next:", next)
     # Check if index is used before
     while c < (len(tree)):
@@ -38,7 +85,7 @@ def find_next_vertex(tree, nearest_ind, selected_coordinates, loop_iteration, bm
 
         elif next in selected_coordinates:
             c += 1
-            next = nearest_ind[selected_coordinates[loop_iteration], c]
+            next = nearest_ind[selected_coordinates[loop_iteration]][c]
             print("Next Else", next)
 
 obj = bpy.context.active_object
@@ -92,56 +139,12 @@ print("Largest X Coordinate:", max_X)
 print("And its index:", max_X_index)
 
 # Old implementation
-tree = KDTree(plain_verts)
-nearest_dist, nearest_ind = tree.query(plain_verts, k=len(plain_verts))
-print("Tree:", tree)
-print("Nearest Ind:", nearest_ind)
+tree = closest_neighbours(coordinates=plain_verts, neighbour_verts=neighbour_vert)
 
-closest_neighbours(coordinates=plain_verts, neighbour_verts=neighbour_vert)
-
-
-## Does not work in current stuff
-# Append Solution:
-# Create X,Y X,Z and Y,Z trees, so there are still spatial coordinates
-# 1D arrays are not allowed
-# --------------------------------
-# Set up tree to search in
-# Individual X, Y, Z trees
-#X_coo = [x[0] for x in plain_verts]
-#tree_X = KDTree(X_coo)
-#Y_coo = [y[1] for y in plain_verts]
-#tree_Y = KDTree(Y_coo)
-#Z_coo = [z[2] for z in plain_verts]
-#tree_Z = KDTree(Z_coo)
-
-# Create the X,Y X,Z Y,Z trees
-#XY_coo = list(zip(X_coo, Y_coo))
-#XZ_coo = list(zip(X_coo, Z_coo))
-#YZ_coo = list(zip(Y_coo, Z_coo))
-#for x in range(len(X_coo)):
-#    XY_coo = np.column_stack((X_coo[x], Y_coo[x]))
-#    XZ_coo = [X_coo[x], Z_coo[x]]
-#    YZ_coo = [Y_coo[x], Z_coo[x]]
-
-#XY_tree = KDTree(XY_coo)
-#XZ_tree = KDTree(XZ_coo)
-#YZ_tree = KDTree(YZ_coo)
-
+#tree = KDTree(plain_verts)
 #nearest_dist, nearest_ind = tree.query(plain_verts, k=len(plain_verts))
-#print("IND:", "\n".join(str(x) for x in nearest_ind))
-
-# Calculate each distances
-#XY_nearest_dist, XY_nearest_ind = XY_tree.query(XY_coo, k=len(XY_coo))
-#XZ_nearest_dist, XZ_nearest_ind = XZ_tree.query(XZ_coo, k=len(XZ_coo))
-#YZ_nearest_dist, YZ_nearest_ind = YZ_tree.query(YZ_coo, k=len(YZ_coo))
-#calc_average_index = []
-#for i in range(len(tree_XZ)):
-#    xy_ind[i] = XY_nearest_ind.index(i)
-#    xz_ind[i] = XZ_nearest_ind.index(i)
-#    yz_ind[i] = YZ_nearest_ind.index(i)
-#    calc_average_index[i] = xy_ind[i] + xz_ind[i] + yz_ind[i]
-# -----------------------------------
-
+#print("Tree:", tree)
+#print("Nearest Ind:", nearest_ind)
 
 # Most extreme +X point as begin point
 max_X = max(X_coo)
@@ -158,7 +161,7 @@ selected_coordinates.append(max_X_index)
 print(selected_coordinates)
 
 for x in range(0, (len(plain_verts)-1)): # Since first determines the start instead of next closest neighbour
-    next = find_next_vertex(tree=plain_verts, nearest_ind=nearest_ind, selected_coordinates=selected_coordinates, loop_iteration=x, bm=bm)
+    next = find_next_vertex(tree=plain_verts, nearest_ind=tree, selected_coordinates=selected_coordinates, loop_iteration=x, bm=bm)
 #    next = find_next_vertex(tree=plain_verts, nearest_ind=calc_average_index, selected_coordinates=selected_coordinates, loop_iteration=x, bm=bm)
 
     # Add to list
@@ -167,17 +170,6 @@ for x in range(0, (len(plain_verts)-1)): # Since first determines the start inst
 print("Final:", selected_coordinates)
 print(len(selected_coordinates))
 
-# Test to see if bm.verts has changed over time
-verts = [vert.co for vert in bm.verts]
-index = [ind.index for ind in bm.verts]
-plain_verts = [vert.to_tuple() for vert in verts]
-tree = KDTree(plain_verts)
-new_nearest_dist, new_nearest_ind = tree.query(plain_verts, k=len(plain_verts))
-print("Test of ind is equal:")
-if (new_nearest_ind == nearest_ind).all():
-    print("True")
-else:
-    print("False")
 
 # Idea
 # Search in the coordinates the most extreme X or Y point
