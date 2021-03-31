@@ -22,11 +22,11 @@ def closest_neighbours(coordinates, neighbour_verts):
             #print("Ind_coo:", ind_coo)
             #print("Ind_coo[1]:", ind_coo[1])
             #print("Coo[1]:", coo[1])
-            #dist_YZ = math.sqrt(math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2)) # (Y1 - Y2) + (Z1 - Z2)
-            dist_X = ind_coo[0] - coo[0]
+            #dist_XZ = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[2] - coo[2]), 2)) # (Y1 - Y2) + (Z1 - Z2)
+            dist_Z = ind_coo[2] - coo[2]
             result = []
             result.append(vertex)
-            result.append(dist_X)
+            result.append(dist_Z)
             tuple(result)
             #print("Result:", result)
             tmp.append(result)
@@ -40,9 +40,9 @@ def closest_neighbours(coordinates, neighbour_verts):
         while c != 0:
             c = 1
             for i in range(len(tmp)):
-                if tmp[i][1] < tmp[i-1][1] and i != 0:
+                if tmp[i][1] > tmp[i-1][1] and i != 0:
                     tmp.insert((i-1), tmp.pop(i))
-                    print("Pop:", tmp)
+                    #print("Pop:", tmp)
                     c += 1
             if c == 1:
                 c = 0
@@ -59,10 +59,10 @@ def closest_neighbours(coordinates, neighbour_verts):
 
 def find_next_vertex(tree, nearest_ind, selected_coordinates, loop_iteration, bm):
     bm.verts.ensure_lookup_table()
-    print("Selected Coordinates Loop:", selected_coordinates)
+    #print("Selected Coordinates Loop:", selected_coordinates)
     c = 1
     next = nearest_ind[selected_coordinates[loop_iteration]][c]
-    print("Next:", next)
+    #print("Next:", next)
     # Check if index is used before
     while c < (len(tree)):
         if next not in selected_coordinates:
@@ -77,16 +77,16 @@ def find_next_vertex(tree, nearest_ind, selected_coordinates, loop_iteration, bm
 
             bm.verts[tree_to_bm].select_set(True)
             selected_verts = [v.index for v in bm.verts if v.select]
-            print("Test bm.verts:", selected_verts)
+            #print("Test bm.verts:", selected_verts)
             # Order point
             bpy.ops.mesh.sort_elements(type='SELECTED', elements={'VERT'})
-            print("Return")
+            #print("Return")
             return next
 
         elif next in selected_coordinates:
             c += 1
             next = nearest_ind[selected_coordinates[loop_iteration]][c]
-            print("Next Else", next)
+            #print("Next Else", next)
 
 obj = bpy.context.active_object
 
@@ -111,7 +111,7 @@ for v in bm.verts:
         v_other.append(e.other_vert(v).index)
         tuple(v_other)
         # print some info
-        print("%d -> %d via edge %d" % (v.index, e.other_vert(v).index, e.index))
+        #print("%d -> %d via edge %d" % (v.index, e.other_vert(v).index, e.index))
         connected_v.append(v_other)
 
 # Now there are several duplicates within, so remove those
@@ -130,13 +130,13 @@ print("Plain Verts:\n", plain_verts)
 
 # Find farthest X coordinate
 X_coo = [x[0] for x in plain_verts]
-print("List of X coordinates:", X_coo)
+#print("List of X coordinates:", X_coo)
 # If multiple coordinates have the most extreme positive X value pick the first one
 # The max() function does this automatically
 max_X = max(X_coo)
 max_X_index = X_coo.index(max_X)
-print("Largest X Coordinate:", max_X)
-print("And its index:", max_X_index)
+#print("Largest X Coordinate:", max_X)
+#print("And its index:", max_X_index)
 
 # Old implementation
 tree = closest_neighbours(coordinates=plain_verts, neighbour_verts=neighbour_vert)
