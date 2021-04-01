@@ -1,5 +1,134 @@
-import bpy, bmesh, random
+import bpy, bmesh, random, math
 from bpy import data as D, context as C
+
+def closest_neighbours(coordinates, neighbour_verts):
+    tree = []
+    # Find max and min X and Y locations of object to compare to
+    X_coo = [x[0] for x in coordinates]
+    Y_coo = [y[1] for y in coordinates]
+    max_X = max(X_coo)
+    max_Y = max(Y_coo)
+    max_X_index = X_coo.index(max_X)
+    max_Y_index = Y_coo.index(max_Y)
+
+    # Same for the min value
+    min_X = min(X_coo)
+    min_Y = min(Y_coo)
+    min_X_index = X_coo.index(min_X)
+    min_Y_index = Y_coo.index(min_Y)
+
+    # Get coordinates
+    X_min = coordinates[min_X_index]
+    X_max = coordinates[max_X_index]
+    Y_min = coordinates[min_Y_index]
+    Y_max = coordinates[max_Y_index]
+
+    for e, b in enumerate(neighbour_verts):
+        ind_coo = coordinates[e]
+        tmp = []
+        for v in range(len(neighbour_verts[e])):
+            vertex = neighbour_verts[e][v]
+            coo = coordinates[neighbour_verts[e][v]]
+
+            # Compare to a point far outside of the mesh and get the angle. The smaller the angle the closer the point is in X-direction
+            # To get the angle get the distance between ind_coo and the comparison point, and ind_coo and the neighbour vertex.
+            # Cosine rule: c2 = a2 + b2 - 2ab cos C (where C is an angle)
+            # Rewritten: C = arccos (a2 + b2 - c2) / 2ab
+
+            if ind_coo[0] >= 0 and ind_coo[1] >= 0:  # Moving in Quadrant I (+, +) towards + Y
+                if ind_coo[1] == Y_max:  # Transition to Quadrant II
+                    # Distance between ind_coo and coo (a)
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between ind_coo and compare_coo
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (min_X-10)), 2) + math.pow((ind_coo[1] - (min_Y-10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between compare_coo and coo
+                    dis_c = math.sqrt(math.pow(((min_X-10) - coo[0]), 2) + math.pow(((min_Y-10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                else:
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (min_X - 10)), 2) + math.pow((ind_coo[1] - (max_Y + 10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    dis_c = math.sqrt(math.pow(((min_X - 10) - coo[0]), 2) + math.pow(((max_Y + 10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+            elif coo[0] <= 0 and coo[1] >= 0:  # Moving in Q II (-, +) towards - X
+                if ind_coo[0] == X_min:  # Transition to Quadrant III
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (max_X + 10)), 2) + math.pow((ind_coo[1] - (min_Y - 10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    dis_c = math.sqrt(math.pow(((max_X + 10) - coo[0]), 2) + math.pow(((min_Y - 10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                else:
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (min_X - 10)), 2) + math.pow((ind_coo[1] - (min_Y - 10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    dis_c = math.sqrt(math.pow(((min_X - 10) - coo[0]), 2) + math.pow(((min_Y - 10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+            elif coo[0] <= 0 and coo[1] <= 0:  # Moving in Q III (-, -) towards - Y
+                if ind_coo[1] == Y_min:  # Transition to Q IV
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (max_X + 10)), 2) + math.pow((ind_coo[1] - (max_Y + 10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    dis_c = math.sqrt(math.pow(((max_X + 10) - coo[0]), 2) + math.pow(((max_Y + 10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                else:
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (max_X + 10)), 2) + math.pow((ind_coo[1] - (min_Y - 10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    dis_c = math.sqrt(math.pow(((max_X + 10) - coo[0]), 2) + math.pow(((min_Y - 10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+            # elif coo[0] >= 0 and coo[1] <= 0: # Moving in Quadrant IV (+, -) towards + X
+            else:
+                if ind_coo[0] == X_max:  # Transition to Q I
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (min_X - 10)), 2) + math.pow((ind_coo[1] - (max_Y + 10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    dis_c = math.sqrt(math.pow(((min_X - 10) - coo[0]), 2) + math.pow(((max_Y + 10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                else:
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (max_X + 10)), 2) + math.pow((ind_coo[1] - (max_Y + 10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    dis_c = math.sqrt(math.pow(((max_X + 10) - coo[0]), 2) + math.pow(((max_Y + 10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+
+            angle = math.acos((dis_a ** 2 + dis_b ** 2 - dis_c ** 2) / (2 * dis_a * dis_b))
+            result = []
+            result.append(vertex)
+            result.append(angle)
+            tuple(result)
+            tmp.append(result)
+
+        # If the angle of the next vertex in the list is smaller, move it to the front of the list
+        c = 1
+        while c != 0:
+            c = 1
+            for i in range(len(tmp)):
+                if tmp[i][1] < tmp[i-1][1] and i != 0:
+                    tmp.insert((i-1), tmp.pop(i))
+                    #print("Pop:", tmp)
+                    c += 1
+            if c == 1:
+                c = 0
+
+        tmp_tree = []
+        tmp_tree.append(e)
+        for i in range(len(tmp)):
+            tmp_tree.append(tmp[i][0])
+        tree.append(tmp_tree)
+    return tree
+
+def find_next_vertex(tree, nearest_ind, selected_coordinates, loop_iteration, bm):
+    bm.verts.ensure_lookup_table()
+    c = 1
+    next = nearest_ind[selected_coordinates[loop_iteration]][c]
+    # Check if index is used before
+    while c < (len(tree)):
+        if next not in selected_coordinates:
+            # Turn on vertex
+            # Bm changes. So, get the coordinates equal to tree[next].
+            # Then compare these coordinates to the coordinates in bm.
+            # Get this index. This is the index that needs to be turned on
+            next_coordinates = tree[next]
+            verts = [vert.co for vert in bm.verts]
+            plain_verts = [vert.to_tuple() for vert in verts]
+            tree_to_bm = plain_verts.index(next_coordinates)
+
+            bm.verts[tree_to_bm].select_set(True)
+            selected_verts = [v.index for v in bm.verts if v.select]
+            # Order point
+            bpy.ops.mesh.sort_elements(type='SELECTED', elements={'VERT'})
+            return next
+
+        # If vertex is already been used before get the next possible vertex
+        elif next in selected_coordinates:
+            c += 1
+            next = nearest_ind[selected_coordinates[loop_iteration]][c]
+
 
 current_mode = C.object.mode
 
@@ -129,53 +258,47 @@ bpy.ops.object.mode_set(mode='EDIT')
 mesh = bmesh.from_edit_mesh(ob.data)
 
 vertices = [e for e in mesh.verts]
+verts = [vert.co for vert in vertices]
 for vert in vertices:
     # Turn every vertix off
     for i in range(0, len(mesh.verts)):
         vert.select_set(False)
 
-    #mw = ob.matrix_world
-#cloc = mw.inverted() @ C.scene.cursor.location
-#new_order = sorted(list(range(len(mesh.verts))))
-#bm.verts.ensure_lookup_table()
-#verts = sorted(mesh.verts, key=lambda v: (v.co - cloc).length)
-#
-#for i, v in enumerate(verts):
-#    v.index = i
-#mesh.verts.sort()
-#bmesh.update_edit_mesh(ob.data)
+connected_v = []
+for v in vertices:
+    v_other = []
+    for e in v.link_edges:
+        v_other.append(e.other_vert(v).index)
+        tuple(v_other)
+        connected_v.append(v_other)
 
+# Now there are several duplicates within, so remove those
+neighbour_vert = []
+for i in connected_v:
+    if i not in neighbour_vert:
+        neighbour_vert.append(i)
+plain_verts = [vert.to_tuple() for vert in verts]
 
-#new_order = list(range(len(mesh.verts)))
-#random.shuffle(new_order)
-##print(new_order)
-##new_order = sorted(new_order)
-#print(new_order)
-#zip1 = [*zip(new_order, mesh.verts)]
-#print("Zip I:")
-#print(zip1)
-#for i, vert in zip(new_order, mesh.verts):
-#    vert.index = i
-#
-#mesh.verts.index_update()
-#zip1 = [*zip(new_order, mesh.verts)]
-#print("Zip II:")
-#print(zip1)
-#for i, v in zip(new_order, mesh.verts):
-#    v.index = i
-#zip1 = [*zip(new_order, mesh.verts)]
-#print("Zip III:")
-#print(zip1)
-#mesh.verts.sort()
-#
-#zip1 = [*zip(new_order, mesh.verts)]
-#print("Zip IV:")
-#print(zip1)
-#
-#bmesh.update_edit_mesh(ob.data)
-#zip1 = [*zip(new_order, mesh.verts)]
-#print("Zip V:")
-#print(zip1)
+tree = closest_neighbours(coordinates=plain_verts, neighbour_verts=neighbour_vert)
 
+# Find farthest X coordinate
+X_coo = [x[0] for x in plain_verts]
+# Most extreme +X point as begin point
+max_X = max(X_coo)
+max_X_index = X_coo.index(max_X)
 
+# Turn on vertex
+mesh.verts.ensure_lookup_table()
+vertices[max_X_index].select_set(True)
+# Order point
+bpy.ops.mesh.sort_elements(type='SELECTED', elements={'VERT'})
+# Add found coordinate to list
+selected_coordinates = []
+selected_coordinates.append(max_X_index)
+print(selected_coordinates)
 
+for x in range(0, (len(plain_verts)-1)): # Since first determines the start instead of next closest neighbour
+    next = find_next_vertex(tree=plain_verts, nearest_ind=tree, selected_coordinates=selected_coordinates, loop_iteration=x, bm=mesh)
+
+    # Add to list
+    selected_coordinates.append(next)

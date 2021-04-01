@@ -336,9 +336,9 @@ max_X = max(X_coo)
 max_X_index = X_coo.index(max_X)
 #print("Largest X Coordinate:", max_X)
 #print("And its index:", max_X_index)
-
-# Old implementation
 tree = closest_neighbours(coordinates=plain_verts, neighbour_verts=neighbour_vert)
+# Old implementation
+
 
 #tree = KDTree(plain_verts)
 #nearest_dist, nearest_ind = tree.query(plain_verts, k=len(plain_verts))
