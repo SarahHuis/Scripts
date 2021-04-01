@@ -5,8 +5,29 @@ import math
 # Create a function that builds a tree like KDTree, just with only the nearest vertices
 def closest_neighbours(coordinates, neighbour_verts):
     tree = []
-    for e, b in enumerate(neighbour_verts):
+    # Find max and min X and Y locations of object to compare to
+    X_coo = [x[0] for x in coordinates]
+    Y_coo = [y[1] for y in coordinates]
+    max_X = max(X_coo)
+    max_Y = max(Y_coo)
+    max_X_index = X_coo.index(max_X)
+    max_Y_index = Y_coo.index(max_Y)
 
+    # Same for the min value
+    min_X = min(X_coo)
+    min_Y = min(Y_coo)
+    min_X_index = X_coo.index(min_X)
+    min_Y_index = Y_coo.index(min_Y)
+
+    # Get coordinates
+    X_min = coordinates[min_X_index]
+    X_max = coordinates[max_X_index]
+    Y_min = coordinates[min_Y_index]
+    Y_max = coordinates[max_Y_index]
+
+    compare_coo = [((max_X + 10), (max_Y + 10), 0)]
+    for e, b in enumerate(neighbour_verts):
+        ind_coo = coordinates[e]
         #print("Suc:", len(neighbour_verts[0]))
         #print("NN:")
         #print(e)
@@ -15,7 +36,7 @@ def closest_neighbours(coordinates, neighbour_verts):
         #for v in enumerate(range(3)):
             vertex = neighbour_verts[e][v]
             coo = coordinates[neighbour_verts[e][v]]
-            ind_coo = coordinates[e]
+
             #print("V:", v)
             #print("Vertex:", vertex)
             #print("Coo:", coo)
@@ -23,36 +44,214 @@ def closest_neighbours(coordinates, neighbour_verts):
             #print("Ind_coo[1]:", ind_coo[1])
             #print("Coo[1]:", coo[1])
             #dist_XZ = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[2] - coo[2]), 2)) # (Y1 - Y2) + (Z1 - Z2)
-            dist_Z = ind_coo[2] - coo[2]
+            #dist_Z = abs(ind_coo[2] - coo[2])
+
+            #dist = abs(ind_coo[2] - coo[2])
+            #dist = math.sqrt(math.pow((0 - coo[0]), 2) + math.pow((0 - coo[1]), 2)) # Distance to XY-plane
+
+            #if coo[0] >= 0 and coo[1] >= 0: # Moving in Quadrant I (+, +) towards Y_max
+                #dist = coo[1]
+            #    dist = math.sqrt(math.pow((Y_max[1] - coo[1]), 2) + math.pow((Y_max[2] - coo[2]), 2)) # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+            #elif coo[0] <= 0 and coo[1] >= 0: # Moving in Q II (-, +) towards X_min
+                #dist = abs(coo[0])
+            #    dist = math.sqrt(math.pow((X_min[0] - coo[0]), 2)+ math.pow((X_min[2] - coo[2]), 2)) # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+            #elif coo[0] <= 0 and coo[1] <= 0: # Moving in Q III (-, -) towards Y_min
+                #dist = abs(coo[1])
+            #    dist = math.sqrt(math.pow((Y_min[1] - coo[1]), 2) + math.pow((Y_min[2] - coo[2]), 2)) # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+            # elif coo[0] >= 0 and coo[1] <= 0: # Moving in Quadrant IV (+, -) towards X_max
+            #else:
+                #dist = coo[0]
+            #    dist = math.sqrt(math.pow((X_max[0] - coo[0]), 2) + math.pow((X_max[2] - coo[2]), 2)) # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+
+            # Create vectors, normalise these and you have the direction.
+            # The one that has the largest (positive) Y-value is the one needed (might need to append with Quadrons
+            vector = [ind_coo[0] - coo[0], ind_coo[1] - coo[1], ind_coo[2] - coo[2]]
+            norm = math.sqrt(vector[0] ** 2 + vector[1] ** 2 + vector[2] ** 2)
+            dir = [vector[0] / norm, vector[1] / norm, vector[2] / norm]
+
+            if ind_coo[0] >= 0 and ind_coo[1] >= 0: # Moving in Quadrant I (+, +) towards + Y
+                if ind_coo[1] == Y_max: # Transition to Quadrant II
+                    dist = dir[0]
+                else:
+                    dist = dir[1]
+            elif coo[0] <= 0 and coo[1] >= 0:  # Moving in Q II (-, +) towards - X
+                if ind_coo[0] == X_min: # Transition to Quadrant III
+                    dist = dir[1]
+                else:
+                    dist = dir[0]
+            elif coo[0] <= 0 and coo[1] <= 0:  # Moving in Q III (-, -) towards - Y
+                if ind_coo[1] == Y_min: # Transition to Q IV
+                    dist = dir[0]
+                else:
+                    dist = dir[1]
+            # elif coo[0] >= 0 and coo[1] <= 0: # Moving in Quadrant IV (+, -) towards + X
+            else:
+                if ind_coo[0] == X_max: # Transition to Q I
+                    dist = dir[1]
+                else:
+                    dist = dir[0]
+
+            # Compare to a point far outside of the mesh and get the angle. The smaller the angle the closer the point is in X-direction
+            # To get the angle get the distance between ind_coo and the comparison point, and ind_coo and the neighbour vertex.
+            # Cosine rule: c2 = a2 + b2 - 2ab cos C (where C is an angle)
+            # Rewritten: C = arccos (a2 + b2 - c2) / 2ab
+            # Distance between ind_coo and coo (a)
+            dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) +math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2)) # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+            # Distance between ind_coo and compare_coo
+            dis_b = math.sqrt(math.pow((ind_coo[0] - compare_coo[0][0]), 2) + math.pow((ind_coo[1] - compare_coo[0][1]), 2) + math.pow((ind_coo[2] - compare_coo[0][2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+            # Distance between compare_coo and coo
+            dis_c = math.sqrt(math.pow((compare_coo[0][0] - coo[0]), 2) + math.pow((compare_coo[0][1] - coo[1]), 2) + math.pow((compare_coo[0][2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+
+            if ind_coo[0] >= 0 and ind_coo[1] >= 0:  # Moving in Quadrant I (+, +) towards + Y
+                if ind_coo[1] == Y_max:  # Transition to Quadrant II
+                    # Distance between ind_coo and coo (a)
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between ind_coo and compare_coo
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (min_X-10)), 2) + math.pow((ind_coo[1] - (min_Y-10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between compare_coo and coo
+                    dis_c = math.sqrt(math.pow(((min_X-10) - coo[0]), 2) + math.pow(((min_Y-10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                else:
+                    # Distance between ind_coo and coo (a)
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between ind_coo and compare_coo
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (min_X - 10)), 2) + math.pow((ind_coo[1] - (max_Y + 10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between compare_coo and coo
+                    dis_c = math.sqrt(math.pow(((min_X - 10) - coo[0]), 2) + math.pow(((max_Y + 10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+            elif coo[0] <= 0 and coo[1] >= 0:  # Moving in Q II (-, +) towards - X
+                if ind_coo[0] == X_min:  # Transition to Quadrant III
+                    # Distance between ind_coo and coo (a)
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between ind_coo and compare_coo
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (max_X + 10)), 2) + math.pow((ind_coo[1] - (min_Y - 10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between compare_coo and coo
+                    dis_c = math.sqrt(math.pow(((max_X + 10) - coo[0]), 2) + math.pow(((min_Y - 10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                else:
+                    # Distance between ind_coo and coo (a)
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between ind_coo and compare_coo
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (min_X - 10)), 2) + math.pow((ind_coo[1] - (min_Y - 10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between compare_coo and coo
+                    dis_c = math.sqrt(math.pow(((min_X - 10) - coo[0]), 2) + math.pow(((min_Y - 10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+            elif coo[0] <= 0 and coo[1] <= 0:  # Moving in Q III (-, -) towards - Y
+                if ind_coo[1] == Y_min:  # Transition to Q IV
+                    # Distance between ind_coo and coo (a)
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between ind_coo and compare_coo
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (max_X + 10)), 2) + math.pow((ind_coo[1] - (max_Y + 10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between compare_coo and coo
+                    dis_c = math.sqrt(math.pow(((max_X + 10) - coo[0]), 2) + math.pow(((max_Y + 10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                else:
+                    # Distance between ind_coo and coo (a)
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between ind_coo and compare_coo
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (max_X + 10)), 2) + math.pow((ind_coo[1] - (min_Y - 10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between compare_coo and coo
+                    dis_c = math.sqrt(math.pow(((max_X + 10) - coo[0]), 2) + math.pow(((min_Y - 10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+            # elif coo[0] >= 0 and coo[1] <= 0: # Moving in Quadrant IV (+, -) towards + X
+            else:
+                if ind_coo[0] == X_max:  # Transition to Q I
+                    # Distance between ind_coo and coo (a)
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between ind_coo and compare_coo
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (min_X - 10)), 2) + math.pow((ind_coo[1] - (max_Y + 10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between compare_coo and coo
+                    dis_c = math.sqrt(math.pow(((min_X - 10) - coo[0]), 2) + math.pow(((max_Y + 10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                else:
+                    # Distance between ind_coo and coo (a)
+                    dis_a = math.sqrt(math.pow((ind_coo[0] - coo[0]), 2) + math.pow((ind_coo[1] - coo[1]), 2) + math.pow((ind_coo[2] - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between ind_coo and compare_coo
+                    dis_b = math.sqrt(math.pow((ind_coo[0] - (max_X + 10)), 2) + math.pow((ind_coo[1] - (max_Y + 10)), 2) + math.pow((ind_coo[2] - 0), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+                    # Distance between compare_coo and coo
+                    dis_c = math.sqrt(math.pow(((max_X + 10) - coo[0]), 2) + math.pow(((max_Y + 10) - coo[1]), 2) + math.pow((0 - coo[2]), 2))  # (X1 - X2) + (Y1 - Y2) + (Z1 - Z2)
+
+            angle = math.acos((dis_a ** 2 + dis_b ** 2 - dis_c ** 2) / (2 * dis_a * dis_b))
+
+            #dist = abs(dir[2])
             result = []
             result.append(vertex)
-            result.append(dist_Z)
+            # result.append(dist)
+            result.append(angle)
             tuple(result)
             #print("Result:", result)
             tmp.append(result)
         #print("TMP:", tmp)
 
+
+
 #        for i in range(len(tmp)):
 #            if tmp[i][1] < tmp[i-1][1]:
 #                tmp.insert((i-1), tmp.pop(i))
 #                print("Pop:", tmp)
+# ------------------------------------------
+# Old method
         c = 1
         while c != 0:
             c = 1
             for i in range(len(tmp)):
-                if tmp[i][1] > tmp[i-1][1] and i != 0:
+                if tmp[i][1] < tmp[i-1][1] and i != 0:
                     tmp.insert((i-1), tmp.pop(i))
                     #print("Pop:", tmp)
                     c += 1
             if c == 1:
                 c = 0
+# ----------------------------------------
 
+# -------------------------------------
+# Quadrants
+#        c = 1
+#        while c != 0:
+#            c = 1
+#            for i in range(len(tmp)): # tmp[i] are the vertices indices, tmp[i][1] gets the vector, tmp[i][1][0] is the X-coordinate
+#                if ind_coo[0] >= 0 and ind_coo[1] >= 0:  # Moving in Quadrant I (+, +) towards + Y
+#                    if ind_coo[1] == Y_max:  # Transition to Quadrant II
+#                       if tmp[i][1][0] < tmp[i - 1][1][0] and i != 0: #and tmp[i][1][2] < tmp[i - 1][1][2]:
+#                            tmp.insert((i - 1), tmp.pop(i))
+#                            c += 1
+#                    else:
+#                        if tmp[i][1][1] > tmp[i - 1][1][1] and i != 0: #and tmp[i][1][2] < tmp[i - 1][1][2]:
+#                            tmp.insert((i - 1), tmp.pop(i))
+#                            c += 1
+#                elif coo[0] <= 0 and coo[1] >= 0:  # Moving in Q II (-, +) towards - X
+#                    if ind_coo[0] == X_min:  # Transition to Quadrant III
+#                        if tmp[i][1][1] < tmp[i - 1][1][1] and i != 0: #and tmp[i][1][2] < tmp[i - 1][1][2]:
+#                            tmp.insert((i - 1), tmp.pop(i))
+#                            c += 1
+#                    else:
+#                       if tmp[i][1][0] < tmp[i - 1][1][0] and i != 0: #and tmp[i][1][2] < tmp[i - 1][1][2]:
+#                            tmp.insert((i - 1), tmp.pop(i))
+#                            c += 1
+#                elif coo[0] <= 0 and coo[1] <= 0:  # Moving in Q III (-, -) towards - Y
+#                    if ind_coo[1] == Y_min:  # Transition to Q IV
+#                        if tmp[i][1][0] > tmp[i - 1][1][0] and i != 0: #and tmp[i][1][2] < tmp[i - 1][1][2]:
+#                            tmp.insert((i - 1), tmp.pop(i))
+#                            c += 1
+#                    else:
+#                       if tmp[i][1][1] < tmp[i - 1][1][1] and i != 0: #and tmp[i][1][2] < tmp[i - 1][1][2]:
+#                            tmp.insert((i - 1), tmp.pop(i))
+#                            c += 1
+#                # elif coo[0] >= 0 and coo[1] <= 0: # Moving in Quadrant IV (+, -) towards + X
+#                else:
+#                    if ind_coo[0] == X_max:  # Transition to Q I
+#                        if tmp[i][1][1] > tmp[i - 1][1][1] and i != 0: #and tmp[i][1][2] < tmp[i - 1][1][2]:
+#                            tmp.insert((i - 1), tmp.pop(i))
+#                            c += 1
+#                    else:
+#                        if tmp[i][1][0] > tmp[i - 1][1][0] and i != 0: #and tmp[i][1][2] < tmp[i - 1][1][2]:
+#                            tmp.insert((i - 1), tmp.pop(i))
+#                            c += 1
+#
+#            if c == 1:
+#                c = 0
+#
+# -------------------------------------------
         tmp_tree = []
         tmp_tree.append(e)
         for i in range(len(tmp)):
             tmp_tree.append(tmp[i][0])
         #print("TMP Tree:", tmp_tree)
         tree.append(tmp_tree)
+
+
 
     print("Tree:", tree)
     return tree
