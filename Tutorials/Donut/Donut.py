@@ -302,3 +302,124 @@ for x in range(0, (len(plain_verts)-1)): # Since first determines the start inst
 
     # Add to list
     selected_coordinates.append(next)
+
+
+# Make the icing lumpy
+mesh = bmesh.from_edit_mesh(ob.data)
+vertices = [e for e in mesh.verts]
+
+faces = [e for e in mesh.faces]
+mesh.faces.ensure_lookup_table()
+
+
+for vert in vertices:
+    # Turn every vertix off
+    for i in range(0, len(mesh.verts)):
+        vert.select_set(False)
+        # Turn the outermost ring on, so vertices 0 - 55
+        if vert.index not in range(0, 56):
+            vert.select_set(True)
+
+# Hide the rest of the icing, so only the bottom is selected for the dripples
+bpy.ops.mesh.hide(unselected=False)
+# Turn every vertices off, including the hidden ones
+for vert in vertices:
+    for i in range(0, len(mesh.verts)):
+        vert.select_set(False)
+C.scene.tool_settings.use_snap = True
+C.scene.tool_settings.snap_elements = {'FACE'}
+C.scene.tool_settings.use_snap_project = True
+
+for vert in vertices:
+    for i in range(0, 56):
+        vert.select_set(True)
+
+        if i is 24:
+            for edge in vert.link_edges:
+                print("Vert:", vert)
+                print("Edge:", edge.other_vert(vert))
+                print("Edge[0]:", edge)
+        if random.uniform(0, 1) > 0.3:
+            # Make the icing wobbly
+            bpy.ops.transform.translate(value=(0, 0, random.uniform(-.6e-3, .6e-3)),
+                                        orient_type='GLOBAL',
+                                        orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+                                        orient_matrix_type='GLOBAL',
+                                        mirror=True,
+                                        use_proportional_edit=True,
+                                        proportional_edit_falloff='RANDOM',
+                                        proportional_size=random.uniform(0, 1e-1),
+                                        use_proportional_connected=False,
+                                        use_proportional_projected=False)
+        # Deselect vert otherwise multiple vertices are selecting for the transformation
+        vert.select_set(False)
+
+# Fuck dripples
+# Make the dripple
+'''mark = 0
+iter = 0
+iter_max = 0
+for vert in vertices:
+
+    for i in range(0, 56):
+        if mark == 1: # At least one vertex is turned on
+            if iter == 1 and iter_max == 2 or iter == 2 and iter_max == 3:
+                vert.select_set(True) # All required vertices are turned on, and ready to be extruded
+                bpy.ops.mesh.extrude_context_move(MESH_OT_extrude_context={"use_normal_flip": False,
+                                                                         "use_dissolve_ortho_edges": False,
+                                                                         "mirror": False},
+                                                 TRANSFORM_OT_translate={"value": (random.uniform(-1e-2, 1e-2), random.uniform(-1e-2, 1e-2), random.uniform(-1e-2, 1e-2)),
+                                                                         "orient_type": 'GLOBAL',
+                                                                         "orient_matrix": ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+                                                                         "orient_matrix_type": 'GLOBAL',
+                                                                         "constraint_axis": (False, False, False),
+                                                                         "mirror": False,
+                                                                         "use_proportional_edit": False,
+                                                                         "proportional_edit_falloff": 'SHARP',
+                                                                         "proportional_size": random.uniform(0, 1e-1),
+                                                                         "use_proportional_connected": False,
+                                                                         "use_proportional_projected": False,
+                                                                         "snap": False, "snap_target": 'CLOSEST',
+                                                                         "snap_point": (0, 0, 0),
+                                                                         "snap_align": False,
+                                                                         "snap_normal": (0, 0, 0),
+                                                                         "gpencil_strokes": False,
+                                                                         "cursor_transform": False,
+                                                                         "texture_space": False,
+                                                                         "remove_on_cancel": False,
+                                                                         "release_confirm": False,
+                                                                         "use_accurate": False,
+                                                                         "use_automerge_and_split": False})
+
+                # Go through all vertices in mesh and turn everyone off
+                for i in range(0,56):
+                    vert.select_set(False)
+
+                # Reset everything
+                mark = 0
+                iter = 0
+                iter_max = 0
+
+            elif iter == 1 and iter_max == 3:
+                vert.select_set(True)
+                iter = 2
+
+        else:
+            if random.uniform(0, 1) > .2:
+                vert.select_set(True)
+                mark = 1 # Has been marked to turn the next verts on.
+                iter = 1 # First vertex is turned on
+                iter_max = random.choice([2, 3]) # Random whether the dribble will be made using a total of 2 vertices or 3.
+
+            #vertices[neighbour_vert[i][0]].select_set(True)
+            #vertices[neighbour_vert[i][1]].select_set(True)
+
+
+
+
+            #vertices[neighbour_vert[i][0]].select_set(False)
+            #vertices[neighbour_vert[i][1]].select_set(False)
+           # vert.select_set(False)
+'''
+
+
